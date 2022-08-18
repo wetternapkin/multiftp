@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "multiftp", "multiftp\multiftp.csproj", "{A4394117-6AA1-4E41-9F01-1D7758B2764B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "multiftp.testing", "multiftp.testing\multiftp.testing.csproj", "{613C5C31-301A-4047-9541-DAD68306D5F1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A4394117-6AA1-4E41-9F01-1D7758B2764B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4394117-6AA1-4E41-9F01-1D7758B2764B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4394117-6AA1-4E41-9F01-1D7758B2764B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4394117-6AA1-4E41-9F01-1D7758B2764B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{613C5C31-301A-4047-9541-DAD68306D5F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{613C5C31-301A-4047-9541-DAD68306D5F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{613C5C31-301A-4047-9541-DAD68306D5F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{613C5C31-301A-4047-9541-DAD68306D5F1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {45AE0AC3-F049-491E-A988-F5AB4D0A22C0}
+	EndGlobalSection
+EndGlobal
