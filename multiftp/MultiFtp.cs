@@ -1,31 +1,33 @@
 ﻿
 using Renci.SshNet;
 using Renci.SshNet.Sftp;
-using System.Collections.Concurrent;
 
 namespace multiftp
 {
     public class MultiFtp : IDisposable
     {
-        private MasterConnection masterConnection;
-        private SlaveConnections slaveConnections;
+        private MasterConnection? masterConnection;
+        private SlaveConnections? slaveConnections;
 
+        private readonly CancellationTokenSource cancellationTokenSource = new();
+        private readonly ConnectionInfo connectionInfo;
 
         public int MaxAllowedConnectionCount { get; }
 
-        public MultiFtp(int maxAllowedConnectionCount)
+        public MultiFtp(ConnectionInfo connectionInfo, int maxAllowedConnectionCount)
         {
             if (maxAllowedConnectionCount < 2)
             {
                 throw new ArgumentOutOfRangeException(nameof(maxAllowedConnectionCount), "we need at least 2 connections to work in harmony :(");
             }
 
+            this.connectionInfo = connectionInfo;
             MaxAllowedConnectionCount = maxAllowedConnectionCount;
         }
 
-        public void Connect(ConnectionInfo connectionInfo)
+        private void Connect(Action<Stream> downloadedAction)
         {
-            slaveConnections = new SlaveConnections(MaxAllowedConnectionCount - 1, SaveFile);
+            slaveConnections = new SlaveConnections(MaxAllowedConnectionCount - 1, downloadedAction);
 
             slaveConnections.Connect(connectionInfo);
 
@@ -39,12 +41,13 @@ namespace multiftp
         /// </summary>
         /// <param name="selector">Give a lambda that will tell the FtpClient to navigate in it (if it is a folder) or to download it (if it is a file)</param>
         /// <returns></returns>
-        public async Task Work(Func<SftpFile, bool> selector)
+        public async Task Work(Func<SftpFile, bool> selector, Action<Stream> downloadedAction)
         {
-            // TODO: CancellationToken
-            var scanningTask = masterConnection.StartScanning(selector);
+            Connect(downloadedAction);
 
-            var downloadTasks = slaveConnections.Start();
+            var scanningTask = masterConnection.StartScanning(selector, cancellationTokenSource.Token);
+
+            var downloadTasks = slaveConnections.Start(cancellationTokenSource.Token);
 
             await scanningTask;
 
@@ -53,27 +56,16 @@ namespace multiftp
             await downloadTasks;
         }
 
-        private static void SaveFile(Stream fileStream)
+        public void Cancel()
         {
-            var path = Path.GetTempPath() + "\\sftp\\" + Guid.NewGuid() + ".txt";
-            Console.WriteLine($"New file: {path}");
-            Console.WriteLine($"Filestream length: {fileStream.Length}");
-            using var file = File.OpenWrite(path);
-
-            fileStream.Position = 0;
-            fileStream.CopyTo(file);
-
-            fileStream.Flush();
-            fileStream.Close();
-            fileStream.Dispose();
-
-            file.Flush();
-            file.Close();
+            cancellationTokenSource.Cancel();
         }
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

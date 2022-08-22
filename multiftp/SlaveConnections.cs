@@ -1,10 +1,5 @@
 ﻿using Renci.SshNet;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace multiftp
 {
@@ -12,12 +7,10 @@ namespace multiftp
     {
         public int Count { get; }
 
-        public readonly List<AsyncFtpClient> slaveConnections;
+        public readonly List<AsyncFtpClient> slaveConnections = new();
 
         private readonly ConcurrentQueue<string> pendingDownloads = new();
         private readonly Action<Stream> fileDownloadedAction;
-        private CancellationTokenSource cancellationTokenSource = new();
-        private ConcurrentBag<Task> tasks = new();
         private bool noMoreFiles = false;
 
         public SlaveConnections(int count, Action<Stream> fileDownloadedAction)
@@ -25,8 +18,6 @@ namespace multiftp
             Count = count;
 
             this.fileDownloadedAction = fileDownloadedAction;
-
-            slaveConnections = new List<AsyncFtpClient>();
         }
 
         public void Connect(ConnectionInfo connectionInfo)
@@ -39,23 +30,23 @@ namespace multiftp
             }
         }
 
-        public void Terminate()
+        public async Task Start(CancellationToken cancellationToken)
         {
-            cancellationTokenSource.Cancel();
-        }
+            var tasks = new List<Task>();
 
-        public Task Start(CancellationToken? cancellationToken = null)
-        {
             foreach(var connection in slaveConnections)
             {
-                var task = Work(connection, cancellationToken == null ? 
-                    cancellationTokenSource.Token : 
-                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken.Value, cancellationTokenSource.Token).Token);
+                var task = Work(connection, cancellationToken);
 
                 tasks.Add(task);
             }
 
-            return Task.WhenAll(tasks);
+            await Task.WhenAll(tasks);
+
+            foreach (var connection in slaveConnections)
+            {
+                connection.Disconnect();
+            }
         }
 
         private Task Work(AsyncFtpClient connection, CancellationToken cancellationToken)
@@ -63,7 +54,6 @@ namespace multiftp
             return
                 Task.Run(async () =>
                 {
-                    Console.WriteLine($"Task {Task.CurrentId} started");
                     while (!cancellationToken.IsCancellationRequested && !(pendingDownloads.IsEmpty && noMoreFiles))
                     {
                         if (pendingDownloads.TryDequeue(out var filePath))
@@ -75,14 +65,11 @@ namespace multiftp
 
                         if (pendingDownloads.IsEmpty) await Task.Delay(TimeSpan.FromMilliseconds(100));
                     }
-
-                    Console.WriteLine($"Task {Task.CurrentId} finished");
                 }, cancellationToken);
         }
 
         public void AddFile(string path)
         {
-            Console.WriteLine($"Added file {path} to queue");
             pendingDownloads.Enqueue(path);
         }
 
@@ -93,7 +80,10 @@ namespace multiftp
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            foreach(var connection in slaveConnections)
+            {
+                connection.Dispose();
+            }
         }
     }
 }

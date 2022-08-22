@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace multiftp
 {
-    internal class MasterConnection
+    internal class MasterConnection : IDisposable
     {
         private readonly AsyncFtpClient sftpClient;
         private readonly Action<string> newFileCallback;
@@ -29,33 +29,36 @@ namespace multiftp
         /// </summary>
         /// <param name="selector"></param>
         /// <returns>A task, but await it with caution, it will only end when all scanning ends</returns>
-        public async Task StartScanning(Func<SftpFile, bool> selector)
+        public async Task StartScanning(Func<SftpFile, bool> selector, CancellationToken ct)
         {
-            await FindFiles(selector, sftpClient.WorkingDirectory);
+            await FindFiles(selector, sftpClient.WorkingDirectory, ct);
         }
 
-        private async Task FindFiles(Func<SftpFile, bool> selector, string workingDirectory)
+        private async Task FindFiles(Func<SftpFile, bool> selector, string workingDirectory, CancellationToken ct)
         {
             var directories = await sftpClient.ListDirectoryAsync(workingDirectory);
 
             foreach (var directory in directories)
             {
+                if (ct.IsCancellationRequested) return;
+
                 if (selector(directory))
                 {
-                    Console.WriteLine($"directory {directory.FullName} passed");
                     if (directory.IsRegularFile)
                     {
                         newFileCallback(directory.FullName);
                     }
                     else
                     {
-                        await FindFiles(selector, directory.FullName);
+                        await FindFiles(selector, directory.FullName, ct);
                     }
-                } else
-                {
-                    Console.WriteLine($"directory {directory.FullName} failed");
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            sftpClient?.Dispose();
         }
     }
 }

@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Renci.SshNet;
+﻿using Renci.SshNet;
 using Renci.SshNet.Sftp;
 
 namespace multiftp
 {
-    internal class AsyncFtpClient
+    internal class AsyncFtpClient : IDisposable
     {
         private readonly SftpClient sftpClient;
 
@@ -33,6 +27,16 @@ namespace multiftp
             await Task.Factory.FromAsync((callback, stateObject) => sftpClient.BeginDownloadFile(path, stream, callback, stateObject), sftpClient.EndDownloadFile, null);
 
             return stream;
+        }
+
+        public void Disconnect()
+        {
+            sftpClient.Disconnect();
+        }
+
+        public void Dispose()
+        {
+            sftpClient.Dispose();
         }
     }
 }
